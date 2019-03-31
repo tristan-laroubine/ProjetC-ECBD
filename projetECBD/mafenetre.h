@@ -4,6 +4,7 @@
 #include <QComboBox>
 #include <QString>
 #include <QTextEdit>
+#include <QTableWidget>
 #include "charger_csv.h"
 
 
@@ -28,8 +29,12 @@ private :
     CVString m_vet;
     CMatString m_mat;
     vector<QString> symptome;
+    QTableWidget *tabWidget;
     void initialiseLesComboBoxs();
     void initialiseComboBox(unsigned nColumn);
-    double compteOccurence(vector<string> &strings, string result);
+    double compteOccurence(CMatString &m_mat, unsigned columnNb, string result);
 
+    double compteOccurence(CMatString &m_mat, unsigned columnNb, string result, string maladie);
+
+    void addData(QString soluce);
 };

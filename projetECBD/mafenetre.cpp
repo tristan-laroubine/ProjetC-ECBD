@@ -38,6 +38,29 @@ MaFenetre::MaFenetre(QWidget *parent) : QWidget(parent)
     in_nom->setGeometry(650,80,100,25);
 
 
+    tabWidget = new QTableWidget(m_mat.size(), m_vet.size(), this);
+    tabWidget->setGeometry(50,350,550,250);
+
+    unsigned i = 0;
+    for (string str : m_vet) {
+        QString qstr = QString::fromStdString(str);
+        QTableWidgetItem *header = new QTableWidgetItem();
+        header->setText(qstr);
+        tabWidget->setHorizontalHeaderItem(i, header);
+        ++i;
+    }
+
+    for (unsigned row = 0; row < m_mat.size(); ++row) {
+        for(unsigned column = 0; column < m_mat[row].size(); ++column){
+            QString qstr = QString::fromStdString(m_mat[row][column]);
+            QTableWidgetItem *item = new QTableWidgetItem();
+            item->setText(qstr);
+            tabWidget->setItem(row ,column, item);
+        }
+    }
+
+
+
 }
 void MaFenetre::initialiseLesComboBoxs(){
         symptome.resize(m_vet.size());
@@ -74,40 +97,118 @@ void MaFenetre::initialiseComboBox(unsigned nColumn)
 void MaFenetre::prediction()
 {
 
+    unsigned testForNullValue = 0;
+    for(uint i(0); i < symptome.size(); ++i)
+    {
+             if( symptome[i].toStdString() == "NULL")
+             {
+                 ++testForNullValue;
+             }
+    }
+    if(testForNullValue ==  symptome.size()-1){
+      predire->setText("NULL");
+      return;
+
+    }
         vector<double> scoreForEachMaladie;
 
         vector <string> vString;
 
-        for (uint i(0); i < m_mat[m_vet.size()].size(); ++i) {
-            if(std::find(vString.begin(), vString.end(), m_mat[i][m_vet.size()]) == vString.end())
+
+
+        for (uint i(0); i < m_mat.size(); ++i) {
+
+            if(std::find(vString.begin(), vString.end(),m_mat[i][m_vet.size()-1]) == vString.end())
             {
-                 vString.push_back(m_mat[i][m_vet.size()]);
+                 vString.push_back(m_mat[i][m_vet.size()-1]);
             }
         }
-   std::cout << vString[0] << std::endl;
-//        scoreForEachMaladie.resize(vString.size());
-//        for (uint i(0); i < scoreForEachMaladie.size(); ++i) {
 
 
-//            double freqMaladie = compteOccurence(m_mat[m_vet.size()], m_mat[m_vet.size()][i]) / m_mat[m_vet.size()].size();
-//            scoreForEachMaladie[i] = freqMaladie;
 
-//            for (uint j (0); j < m_mat.size()-1; ++j) {
-//                 scoreForEachMaladie[i] =  scoreForEachMaladie[i] + (count(m_mat[j].begin(), m_mat[j].end(), symptome[j])/ freqMaladie);
-//            }
 
-//        }
 
-//          string soluce = vString[std::max_element(scoreForEachMaladie.begin(),scoreForEachMaladie.end()) - scoreForEachMaladie.begin()];
+        scoreForEachMaladie.resize(vString.size());
+        for (uint i(0); i < scoreForEachMaladie.size(); ++i) {
 
-//           predire->setText(QString::fromStdString(soluce));
+
+            double freqMaladie = compteOccurence(m_mat, m_vet.size()-1 , vString[i]) / m_mat.size();
+            scoreForEachMaladie[i] = freqMaladie;
+
+            for (uint j (0); j < m_vet.size()-1; ++j) {
+                if (symptome[j].toStdString() == "NULL")continue;
+                 scoreForEachMaladie[i] =  scoreForEachMaladie[i] * (compteOccurence(m_mat,j , vString[i],symptome[j].toStdString())/ compteOccurence(m_mat, m_vet.size()-1 , vString[i]));
+                if (compteOccurence(m_mat,j , vString[i],symptome[j].toStdString()) == 0){
+                     scoreForEachMaladie[i] = 0;
+                     break;
+                }
+            }
+        }
+
+
+           if(*std::max_element(scoreForEachMaladie.begin(),scoreForEachMaladie.end()) <= 0)
+           {
+                predire->setText(QString::fromStdString("0"));
+                return;
+           }
+          string soluce = vString[std::max_element(scoreForEachMaladie.begin(),scoreForEachMaladie.end()) - scoreForEachMaladie.begin()];
+//                  for(uint i(0); i < scoreForEachMaladie.size(); ++i)
+//                  {
+//                            std::cout << scoreForEachMaladie[i]<< std::endl;
+//                  }
+           predire->setText(QString::fromStdString(soluce));
+           addData(QString::fromStdString(soluce));
+
+
+
+            }
+
+void MaFenetre::addData(QString soluce)
+{
+    tabWidget->insertRow ( tabWidget->rowCount() );
+    for (uint i (0); i < m_vet.size()-1; ++i){
+        tabWidget->setItem   ( tabWidget->rowCount()-1,
+                                 i,
+                                 new QTableWidgetItem(symptome[i]));
+    }
+    tabWidget->setItem   ( tabWidget->rowCount()-1,
+                             m_vet.size()-1,
+                             new QTableWidgetItem(soluce));
+
+
+    m_mat.resize(m_mat.size()+1);
+// <-- AUTO apprentisage -- >
+    for (uint i(0); i < symptome.size()-1; ++i)
+    {
+
+         m_mat[m_mat.size()-1].push_back(symptome[i].toStdString());
+    }
+    m_mat[m_mat.size()-1].push_back(soluce.toStdString());
+// <-- FIN AUTO apprentisage -- >
+
+
+    for (uint i (0); i < m_mat.size(); ++i)
+    {
+        std::cout << i;
+        for (uint j (0); j < m_mat[i].size(); ++j)
+        {
+            std::cout << " | " << m_mat[i][j];
+        }
+        std::cout << std::endl;
+    }
+
 }
 
-double MaFenetre::compteOccurence(vector<string> &strings, string result)
+
+double MaFenetre::compteOccurence(CMatString &m_mat, unsigned columnNb, string result)
 {
+    vector <string> m_mat_collum;
+    for (uint i(0); i < m_mat.size(); ++i){
+         m_mat_collum.push_back( m_mat[i][columnNb]);
+    }
     double incr(0);
-    for (uint i(0); i < strings.size(); ++i) {
-        if(strings[i] == result)
+    for (uint i(0); i < m_mat_collum.size(); ++i) {
+        if(m_mat_collum[i] == result)
         {
             ++incr;
         }
@@ -115,11 +216,28 @@ double MaFenetre::compteOccurence(vector<string> &strings, string result)
     return incr;
 }
 
+double MaFenetre::compteOccurence(CMatString &m_mat, unsigned columnNb, string result,string maladie)
+{
+    vector <string> m_mat_collum;
+    for (uint i(0); i < m_mat.size(); ++i){
+         m_mat_collum.push_back( m_mat[i][columnNb]);
+    }
+    double incr(0);
+    for (uint i(0); i < m_mat_collum.size(); ++i) {
+
+        if(m_mat_collum[i] == maladie && m_mat[i][m_vet.size()-1] == result)
+        {
+//                    std::cout << m_mat_collum[i] << " =? " << maladie << "    |     " << m_mat[i][m_vet.size()-1]<< " =? "<< result << std::endl;
+            ++incr;
+        }
+    }
+    return incr;
+}
+
+
 
 void MaFenetre::setQuitter()
 {
-
-
         exit(0);
 }
 void MaFenetre::setPrediction()
